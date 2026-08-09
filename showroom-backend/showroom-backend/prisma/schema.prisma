@@ -1,0 +1,336 @@
+// This is your Prisma schema file for Showroom Xe
+// Run: npx prisma migrate dev --name init
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [pgvector(map: "vector")]
+}
+
+// ─── ENUMS ────────────────────────────────────────────────────────────────────
+
+enum Role {
+  customer
+  staff
+  admin
+}
+
+enum CarStatus {
+  available
+  reserved
+  sold
+}
+
+enum CarCondition {
+  new_car
+  used_car
+}
+
+enum OrderType {
+  deposit
+  purchase
+}
+
+enum OrderStatus {
+  pending
+  confirmed
+  completed
+  cancelled
+}
+
+enum MessageRole {
+  user
+  assistant
+}
+
+// ─── NHÓM NGƯỜI DÙNG ──────────────────────────────────────────────────────────
+
+model User {
+  id           String   @id @default(uuid())
+  full_name    String
+  email        String   @unique
+  password_hash String
+  phone        String?
+  role         Role     @default(customer)
+  branch_id    String?
+  created_at   DateTime @default(now())
+
+  branch       Branch?       @relation(fields: [branch_id], references: [id])
+  orders_as_customer Order[] @relation("CustomerOrders")
+  orders_as_staff    Order[] @relation("StaffOrders")
+  test_drives  TestDrive[]
+  reviews      Review[]
+  chat_sessions ChatSession[]
+  maintenances Maintenance[]
+  refresh_sessions RefreshSession[]
+  payments_recorded Payment[] @relation("RecordedPayments")
+  contracts_signed Contract[] @relation("SignedContracts")
+  password_reset_tokens PasswordResetToken[]
+
+  @@map("users")
+}
+
+// ─── NHÓM XE & TỒN KHO ────────────────────────────────────────────────────────
+
+model Branch {
+  id         String   @id @default(uuid())
+  name       String
+  address    String?
+  phone      String?
+  created_at DateTime @default(now())
+
+  users  User[]
+  cars   Car[]
+  orders Order[]
+  maintenances Maintenance[]
+
+  @@map("branches")
+}
+
+model Car {
+  id           String    @id @default(uuid())
+  stock_code   String?   @unique
+  vin          String?   @unique
+  branch_id    String
+  brand        String
+  model        String
+  year         Int
+  price        Decimal   @db.Decimal(15, 0)
+  mileage      Int?      @default(0)
+  fuel_type    String
+  transmission String
+  status       CarStatus @default(available)
+  condition    CarCondition @default(new_car)
+  specs        Json?
+  description  String?
+  created_at   DateTime  @default(now())
+
+  branch     Branch       @relation(fields: [branch_id], references: [id])
+  images     CarImage[]
+  embedding  CarEmbedding?
+  orders     Order[]
+  test_drives TestDrive[]
+  reviews    Review[]
+  maintenances Maintenance[]
+
+  @@index([branch_id, status])
+  @@index([condition, status])
+  @@map("cars")
+}
+
+model CarImage {
+  id         String   @id @default(uuid())
+  car_id     String
+  url        String
+  is_primary Boolean  @default(false)
+  created_at DateTime @default(now())
+
+  car Car @relation(fields: [car_id], references: [id], onDelete: Cascade)
+
+  @@map("car_images")
+}
+
+model CarEmbedding {
+  id        String                       @id @default(uuid())
+  car_id    String                       @unique
+  content   String                       // Văn bản được dùng để sinh vector
+  embedding Unsupported("vector(1536)")?
+
+  car Car @relation(fields: [car_id], references: [id], onDelete: Cascade)
+
+  @@map("car_embeddings")
+}
+
+// ─── NHÓM GIAO DỊCH ───────────────────────────────────────────────────────────
+
+model Order {
+  id           String      @id @default(uuid())
+  customer_id  String
+  staff_id     String?
+  car_id       String
+  branch_id    String
+  type         OrderType
+  status       OrderStatus @default(pending)
+  total_amount Decimal     @db.Decimal(15, 0)
+  payment_due_amount Decimal @db.Decimal(15, 0)
+  payment_plan String      @default("full")
+  financing_amount Decimal @default(0) @db.Decimal(15, 0)
+  financing_months Int?
+  notes        String?
+  created_at   DateTime    @default(now())
+
+  customer  User     @relation("CustomerOrders", fields: [customer_id], references: [id])
+  staff     User?    @relation("StaffOrders", fields: [staff_id], references: [id])
+  car       Car      @relation(fields: [car_id], references: [id])
+  branch    Branch   @relation(fields: [branch_id], references: [id])
+  contract  Contract?
+  payments  Payment[]
+
+  @@index([customer_id, created_at])
+  @@index([branch_id, status])
+  @@index([car_id, status])
+  @@map("orders")
+}
+
+model Contract {
+  id           String   @id @default(uuid())
+  order_id     String   @unique
+  file_url     String?
+  signed_at    DateTime?
+  signed_by_id String?
+  created_at   DateTime @default(now())
+
+  order Order @relation(fields: [order_id], references: [id])
+  signed_by User? @relation("SignedContracts", fields: [signed_by_id], references: [id], onDelete: SetNull)
+
+  @@map("contracts")
+}
+
+model Payment {
+  id         String   @id @default(uuid())
+  order_id   String
+  amount     Decimal  @db.Decimal(15, 0)
+  method     String?  // cash, bank_transfer, ...
+  note       String?
+  reference  String?  @unique
+  recorded_by_id String?
+  paid_at    DateTime @default(now())
+
+  order Order @relation(fields: [order_id], references: [id])
+  recorded_by User? @relation("RecordedPayments", fields: [recorded_by_id], references: [id], onDelete: SetNull)
+
+  @@index([order_id, paid_at])
+  @@map("payments")
+}
+
+model TestDrive {
+  id           String   @id @default(uuid())
+  customer_id  String
+  car_id       String
+  branch_id    String?
+  scheduled_at DateTime
+  status       String   @default("pending") // pending | confirmed | cancelled | done
+  notes        String?
+  created_at   DateTime @default(now())
+
+  customer User @relation(fields: [customer_id], references: [id])
+  car      Car  @relation(fields: [car_id], references: [id])
+
+  @@index([customer_id, scheduled_at])
+  @@index([branch_id, scheduled_at])
+  @@index([car_id, scheduled_at])
+  @@map("test_drives")
+}
+
+// ─── NHÓM BẢO DƯỠNG XE (quản lý riêng, tách khỏi tồn kho) ─────────────────────
+
+model Maintenance {
+  id           String   @id @default(uuid())
+  customer_id  String
+  car_id       String?
+  branch_id    String?
+  service_type String   // Loại dịch vụ: bảo dưỡng định kỳ, sửa chữa, thay dầu, ...
+  scheduled_at DateTime
+  status       String   @default("pending") // pending | confirmed | in_progress | done | cancelled
+  notes        String?
+  cost         Decimal? @db.Decimal(15, 0)
+  created_at   DateTime @default(now())
+
+  customer User    @relation(fields: [customer_id], references: [id])
+  car      Car?    @relation(fields: [car_id], references: [id])
+  branch   Branch? @relation(fields: [branch_id], references: [id])
+
+  @@index([customer_id, scheduled_at])
+  @@index([branch_id, scheduled_at])
+  @@map("maintenances")
+}
+
+model Review {
+  id         String   @id @default(uuid())
+  customer_id String
+  car_id     String
+  rating     Int      // 1-5
+  comment    String?
+  is_visible Boolean  @default(true)
+  created_at DateTime @default(now())
+
+  customer User @relation(fields: [customer_id], references: [id])
+  car      Car  @relation(fields: [car_id], references: [id])
+
+  @@unique([customer_id, car_id])
+  @@index([car_id, is_visible, created_at])
+  @@map("reviews")
+}
+
+model RefreshSession {
+  id         String    @id
+  user_id    String
+  expires_at DateTime
+  revoked_at DateTime?
+  created_at DateTime  @default(now())
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([expires_at])
+  @@map("refresh_sessions")
+}
+
+model PasswordResetToken {
+  id         String    @id @default(uuid())
+  user_id    String
+  token_hash String    @unique
+  expires_at DateTime
+  used_at    DateTime?
+  created_at DateTime  @default(now())
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([expires_at])
+  @@map("password_reset_tokens")
+}
+
+model ContactLead {
+  id         String   @id @default(uuid())
+  name       String
+  email      String
+  phone      String?
+  subject    String?
+  message    String
+  status     String   @default("new")
+  created_at DateTime @default(now())
+
+  @@index([status, created_at])
+  @@map("contact_leads")
+}
+
+// ─── NHÓM CHATBOT ─────────────────────────────────────────────────────────────
+
+model ChatSession {
+  id         String   @id @default(uuid())
+  user_id    String?
+  created_at DateTime @default(now())
+
+  user     User?         @relation(fields: [user_id], references: [id])
+  messages ChatMessage[]
+
+  @@map("chat_sessions")
+}
+
+model ChatMessage {
+  id         String      @id @default(uuid())
+  session_id String
+  role       MessageRole
+  content    String
+  created_at DateTime    @default(now())
+
+  session ChatSession @relation(fields: [session_id], references: [id], onDelete: Cascade)
+
+  @@map("chat_messages")
+}

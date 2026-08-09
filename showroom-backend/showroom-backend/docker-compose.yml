@@ -1,0 +1,22 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: showroom_db
+    environment:
+      POSTGRES_USER: showroom_user
+      POSTGRES_PASSWORD: showroom_pass
+      POSTGRES_DB: showroom_db
+    ports:
+      - '5432:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U showroom_user -d showroom_db']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:
