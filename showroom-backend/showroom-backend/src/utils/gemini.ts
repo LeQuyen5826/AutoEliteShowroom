@@ -3,7 +3,7 @@ import https from 'https'
 function getGeminiConfig() {
   return {
     key: process.env.GEMINI_API_KEY?.trim() || '',
-    model: process.env.GEMINI_MODEL?.trim() || 'gemini-2.5-flash',
+    model: process.env.GEMINI_MODEL?.trim() || 'gemini-3.5-flash',
   }
 }
 
@@ -84,8 +84,8 @@ export async function geminiChat(
     contents,
     systemInstruction: { parts: [{ text: systemPrompt }] },
     generationConfig: {
-      maxOutputTokens: 2048,
-      thinkingConfig: { thinkingLevel: 'low' },
+      maxOutputTokens: 4096,
+      thinkingConfig: { thinkingLevel: 'minimal' },
     },
     safetySettings: [
       { category: 'HARM_CATEGORY_HARASSMENT',        threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
@@ -96,16 +96,26 @@ export async function geminiChat(
   }, key, 30_000)
 
   const json = JSON.parse(raw) as {
-    candidates?: { content: { parts: { text: string }[] } }[]
+    candidates?: {
+      finishReason?: string
+      content?: { parts?: { text?: string; thought?: boolean }[] }
+    }[]
     promptFeedback?: { blockReason?: string }
   }
 
   if (json.promptFeedback?.blockReason) throw new Error(`Bị chặn: ${json.promptFeedback.blockReason}`)
 
-  const text = json.candidates?.[0]?.content?.parts?.[0]?.text
-  if (!text) throw new Error('Gemini không trả về nội dung')
+  const candidate = json.candidates?.[0]
+  const text = candidate?.content?.parts
+    ?.filter(part => !part.thought)
+    .map(part => part.text || '')
+    .join('')
+    .trim()
+  if (!text) {
+    throw new Error(`Gemini không trả về nội dung (${candidate?.finishReason || 'UNKNOWN'})`)
+  }
 
-  return text.trim()
+  return text
 }
 
 export interface VisionInventoryCar {
