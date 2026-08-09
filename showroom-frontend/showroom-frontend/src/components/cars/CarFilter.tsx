@@ -21,7 +21,10 @@ export default function CarFilter({ filter, onChange, onReset }: CarFilterProps)
 
   const hasActiveFilter = Object.entries(filter).some(([k, v]) => k !== 'page' && k !== 'limit' && v !== undefined)
 
-  const FilterContent = () => (
+  // Trả JSX trực tiếp thay vì khai báo component con bên trong CarFilter.
+  // Nếu dùng <FilterContent />, component sẽ bị tạo lại sau mỗi lần filter đổi
+  // và các input bị remount, dẫn đến mất focus sau từng ký tự.
+  const renderFilterContent = () => (
     <div className="space-y-5">
       {/* Tìm kiếm */}
       <div>
@@ -162,7 +165,7 @@ export default function CarFilter({ filter, onChange, onReset }: CarFilterProps)
               <span className="badge bg-primary-100 text-primary-700">Đang lọc</span>
             )}
           </div>
-          <FilterContent />
+          {renderFilterContent()}
         </div>
       </aside>
 
@@ -186,7 +189,7 @@ export default function CarFilter({ filter, onChange, onReset }: CarFilterProps)
                   <X size={18} />
                 </button>
               </div>
-              <FilterContent />
+              {renderFilterContent()}
               <button onClick={() => setShowMobile(false)} className="btn-primary w-full mt-4">Áp dụng</button>
             </div>
           </div>
