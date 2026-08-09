@@ -29,7 +29,7 @@ function sanitizeHistory(history: GeminiMessage[]): GeminiMessage[] {
   return result
 }
 
-function httpsPost(url: string, body: object): Promise<string> {
+function httpsPost(url: string, body: object, apiKey: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const data = JSON.stringify(body)
     const parsed = new URL(url)
@@ -40,6 +40,7 @@ function httpsPost(url: string, body: object): Promise<string> {
       headers: {
         'Content-Type': 'application/json',
         'Content-Length': Buffer.byteLength(data),
+        'x-goog-api-key': apiKey,
       },
     }
     const req = https.request(options, (res) => {
@@ -77,7 +78,7 @@ export async function geminiChat(
     { role: 'user' as const, parts: [{ text: userMessage }] },
   ]
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`
 
   const raw = await httpsPost(url, {
     contents,
@@ -89,7 +90,7 @@ export async function geminiChat(
       { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
       { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
     ],
-  })
+  }, key)
 
   const json = JSON.parse(raw) as {
     candidates?: { content: { parts: { text: string }[] } }[]
@@ -156,7 +157,7 @@ Trả về duy nhất JSON hợp lệ theo dạng:
 {"analysis":"mô tả ngắn bằng tiếng Việt","matches":[{"car_id":"uuid","confidence":0-100,"reason":"lý do ngắn"}]}
 Tối đa 5 kết quả, sắp xếp confidence giảm dần.`
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`
   const raw = await httpsPost(url, {
     contents: [{
       role: 'user',
@@ -170,7 +171,7 @@ Tối đa 5 kết quả, sắp xếp confidence giảm dần.`
       maxOutputTokens: 1024,
       responseMimeType: 'application/json',
     },
-  })
+  }, key)
 
   const json = JSON.parse(raw) as {
     candidates?: { content?: { parts?: { text?: string }[] } }[]
