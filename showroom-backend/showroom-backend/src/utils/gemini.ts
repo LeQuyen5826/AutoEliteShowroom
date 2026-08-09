@@ -29,7 +29,7 @@ function sanitizeHistory(history: GeminiMessage[]): GeminiMessage[] {
   return result
 }
 
-function httpsPost(url: string, body: object, apiKey: string): Promise<string> {
+function httpsPost(url: string, body: object, apiKey: string, timeoutMs = 30_000): Promise<string> {
   return new Promise((resolve, reject) => {
     const data = JSON.stringify(body)
     const parsed = new URL(url)
@@ -58,7 +58,7 @@ function httpsPost(url: string, body: object, apiKey: string): Promise<string> {
       })
     })
     req.on('error', reject)
-    req.setTimeout(20_000, () => req.destroy(new Error('Gemini API timeout')))
+    req.setTimeout(timeoutMs, () => req.destroy(new Error(`Gemini API timeout sau ${Math.round(timeoutMs / 1000)} giây`)))
     req.write(data)
     req.end()
   })
@@ -83,14 +83,17 @@ export async function geminiChat(
   const raw = await httpsPost(url, {
     contents,
     systemInstruction: { parts: [{ text: systemPrompt }] },
-    generationConfig: { temperature: 0.7, maxOutputTokens: 1024 },
+    generationConfig: {
+      maxOutputTokens: 2048,
+      thinkingConfig: { thinkingLevel: 'low' },
+    },
     safetySettings: [
       { category: 'HARM_CATEGORY_HARASSMENT',        threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
       { category: 'HARM_CATEGORY_HATE_SPEECH',       threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
       { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
       { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
     ],
-  }, key)
+  }, key, 30_000)
 
   const json = JSON.parse(raw) as {
     candidates?: { content: { parts: { text: string }[] } }[]
@@ -167,19 +170,50 @@ Tối đa 5 kết quả, sắp xếp confidence giảm dần.`
       ],
     }],
     generationConfig: {
-      temperature: 0.1,
-      maxOutputTokens: 1024,
+      maxOutputTokens: 4096,
+      thinkingConfig: { thinkingLevel: 'minimal' },
       responseMimeType: 'application/json',
+      responseJsonSchema: {
+        type: 'object',
+        required: ['analysis', 'matches'],
+        properties: {
+          analysis: { type: 'string' },
+          matches: {
+            type: 'array',
+            maxItems: 5,
+            items: {
+              type: 'object',
+              required: ['car_id', 'confidence', 'reason'],
+              properties: {
+                car_id: { type: 'string' },
+                confidence: { type: 'number', minimum: 0, maximum: 100 },
+                reason: { type: 'string' },
+              },
+            },
+          },
+        },
+      },
     },
-  }, key)
+  }, key, 75_000)
 
   const json = JSON.parse(raw) as {
-    candidates?: { content?: { parts?: { text?: string }[] } }[]
+    candidates?: { finishReason?: string; content?: { parts?: { text?: string; thought?: boolean }[] } }[]
   }
-  const text = json.candidates?.[0]?.content?.parts?.map(part => part.text || '').join('').trim()
+  const candidate = json.candidates?.[0]
+  const text = candidate?.content?.parts
+    ?.filter(part => !part.thought)
+    .map(part => part.text || '')
+    .join('')
+    .trim()
   if (!text) throw new Error('Gemini không trả về kết quả nhận diện ảnh')
 
-  const parsed = JSON.parse(text.replace(/^```json\s*|\s*```$/g, '')) as VisionSearchResult
+  const withoutFence = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim()
+  const firstBrace = withoutFence.indexOf('{')
+  const lastBrace = withoutFence.lastIndexOf('}')
+  if (firstBrace < 0 || lastBrace < firstBrace) {
+    throw new Error(`Gemini trả về JSON không hoàn chỉnh (${candidate?.finishReason || 'UNKNOWN'})`)
+  }
+  const parsed = JSON.parse(withoutFence.slice(firstBrace, lastBrace + 1)) as VisionSearchResult
   const validIds = new Set(inventory.map(car => car.id))
   return {
     analysis: String(parsed.analysis || 'Đã phân tích ảnh xe.'),
