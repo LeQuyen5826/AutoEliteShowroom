@@ -39,20 +39,22 @@ function readCookie(req: Request, name: string): string | undefined {
 }
 
 function setRefreshCookie(res: Response, token: string): void {
+  const isProduction = process.env.NODE_ENV === 'production';
   res.cookie(REFRESH_COOKIE, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    secure: isProduction,
+    sameSite: isProduction ? 'none' : 'lax',
     path: '/api/auth',
     maxAge: refreshTtlMs(),
   });
 }
 
 function clearRefreshCookie(res: Response): void {
+  const isProduction = process.env.NODE_ENV === 'production';
   res.clearCookie(REFRESH_COOKIE, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    secure: isProduction,
+    sameSite: isProduction ? 'none' : 'lax',
     path: '/api/auth',
   });
 }
