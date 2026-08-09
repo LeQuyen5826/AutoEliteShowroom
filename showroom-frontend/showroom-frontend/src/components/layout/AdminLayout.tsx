@@ -1,11 +1,12 @@
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Package, ShoppingCart,
-  Users, CalendarCheck, ArrowLeft, LogOut, Car, Wrench, Image as ImageIcon,
+  Users, CalendarCheck, ArrowLeft, LogOut, Wrench, Image as ImageIcon,
 } from 'lucide-react'
 import { cn } from '@/utils'
 import { useAuthStore } from '@/store/auth.store'
 import { authService } from '@/services/auth.service'
+import BrandLogo from '@/components/brand/BrandLogo'
 
 // Cấu hình menu phân theo vai trò:
 // - admin  → thấy toàn bộ kể cả Dashboard & Quản lý người dùng
@@ -85,11 +86,8 @@ export default function AdminLayout() {
       <aside className="w-60 bg-white border-r border-neutral-100 hidden md:flex flex-col shrink-0">
         {/* Logo + info */}
         <div className="p-5 border-b border-neutral-100">
-          <div className="flex items-center gap-2 mb-1">
-            <div className="w-7 h-7 bg-primary-600 rounded-lg flex items-center justify-center">
-              <Car size={14} className="text-white" />
-            </div>
-            <p className="font-display font-bold text-neutral-900 text-sm">AutoElite</p>
+          <div className="mb-1">
+            <BrandLogo size="sm" />
           </div>
           <p className="text-xs text-neutral-400">
             {role === 'admin' ? '🔐 Quản trị viên' : '👤 Nhân viên bán hàng'}

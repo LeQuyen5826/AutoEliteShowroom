@@ -60,3 +60,50 @@
 ::-webkit-scrollbar-track { @apply bg-neutral-100; }
 ::-webkit-scrollbar-thumb { @apply bg-neutral-300 rounded-full; }
 ::-webkit-scrollbar-thumb:hover { @apply bg-neutral-400; }
+
+/* Dải logo hãng xe chạy liên tục; tạm dừng khi khách rê chuột vào. */
+.brand-marquee {
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to right, transparent, black 6%, black 94%, transparent);
+  mask-image: linear-gradient(to right, transparent, black 6%, black 94%, transparent);
+}
+
+.brand-marquee__track {
+  display: flex;
+  width: max-content;
+  animation: brand-marquee-scroll 38s linear infinite;
+  will-change: transform;
+}
+
+.brand-marquee__group {
+  display: flex;
+  flex-shrink: 0;
+  gap: 1rem;
+  padding: 0.25rem 1rem 0.5rem 0;
+}
+
+.brand-marquee__track:hover,
+.brand-marquee__track:focus-within {
+  animation-play-state: paused;
+}
+
+@keyframes brand-marquee-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brand-marquee {
+    overflow-x: auto;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+
+  .brand-marquee__track {
+    animation: none;
+  }
+
+  .brand-marquee__group[aria-hidden="true"] {
+    display: none;
+  }
+}

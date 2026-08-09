@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowLeft, Car, CheckCircle, Loader2 } from 'lucide-react'
+import { ArrowLeft, CheckCircle, Loader2 } from 'lucide-react'
 import { authService } from '@/services/auth.service'
+import BrandLogo from '@/components/brand/BrandLogo'
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
@@ -26,10 +27,7 @@ export default function ForgotPasswordPage() {
   return (
     <div className="min-h-screen bg-neutral-50 flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
-        <Link to="/" className="flex items-center gap-2 justify-center mb-7">
-          <div className="w-9 h-9 bg-primary-600 rounded-xl flex items-center justify-center"><Car size={20} className="text-white" /></div>
-          <span className="font-display font-bold text-xl">Auto<span className="text-primary-600">Elite</span></span>
-        </Link>
+        <div className="flex justify-center mb-7"><BrandLogo size="lg" /></div>
         <div className="card p-6">
           <h1 className="font-display font-bold text-2xl">Quên mật khẩu</h1>
           <p className="text-sm text-neutral-500 mt-1 mb-5">Nhập email đã đăng ký để nhận liên kết đặt lại mật khẩu.</p>

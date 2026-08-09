@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useAuthStore } from '@/store/auth.store'
 import { cn } from '@/utils'
 import { authService } from '@/services/auth.service'
+import BrandLogo from '@/components/brand/BrandLogo'
 
 const CAR_MENU = [
   { label: 'Tất cả xe', to: '/cars', desc: 'Xem toàn bộ danh sách xe' },
@@ -39,17 +40,9 @@ export default function Header() {
   return (
     <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-neutral-100 shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+        <div className="flex items-center justify-between h-20">
 
-          {/* Logo */}
-          <Link to="/" className="flex items-center gap-2.5 shrink-0">
-            <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
-              <Car className="text-white" size={18} />
-            </div>
-            <span className="font-display font-bold text-neutral-900 text-lg tracking-tight">
-              Auto<span className="text-primary-600">Elite</span>
-            </span>
-          </Link>
+          <BrandLogo size="md" />
 
           {/* Desktop nav */}
           <nav className="hidden md:flex items-center gap-1">

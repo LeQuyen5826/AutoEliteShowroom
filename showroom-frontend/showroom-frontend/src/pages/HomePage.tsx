@@ -3,15 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { ArrowRight, Shield, Headphones, FileText, Zap } from 'lucide-react'
 import { carsService } from '@/services/cars.service'
 import CarCard from '@/components/cars/CarCard'
-
-const BRANDS = [
-  { name: 'Toyota', logo: '🚗' },
-  { name: 'Honda', logo: '🚙' },
-  { name: 'Mercedes-Benz', logo: '⭐' },
-  { name: 'BMW', logo: '🔵' },
-  { name: 'VinFast', logo: '🇻🇳' },
-  { name: 'Mazda', logo: '🔴' },
-]
+import BrandMarquee from '@/components/brand/BrandMarquee'
 
 const FEATURES = [
   { icon: <Shield size={22} />, title: 'Xe chính hãng', desc: 'Toàn bộ xe đều có giấy tờ pháp lý đầy đủ, nguồn gốc rõ ràng.' },
@@ -77,23 +69,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Brands */}
-      <section className="border-b border-neutral-100 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex items-center gap-6 overflow-x-auto pb-1">
-            <p className="text-xs font-semibold text-neutral-400 uppercase tracking-wider shrink-0">Thương hiệu</p>
-            <div className="flex items-center gap-4">
-              {BRANDS.map(({ name, logo }) => (
-                <Link key={name} to={`/cars?brand=${name}`}
-                  className="flex items-center gap-2 px-4 py-2 rounded-xl border border-neutral-100 hover:border-primary-200 hover:bg-primary-50 transition-colors shrink-0">
-                  <span className="text-lg">{logo}</span>
-                  <span className="text-sm font-medium text-neutral-700">{name}</span>
-                </Link>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
+      <BrandMarquee />
 
       {/* Featured cars */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14">

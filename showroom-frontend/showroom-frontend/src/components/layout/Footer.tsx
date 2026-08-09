@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
-import { Car, Phone, MapPin, Mail } from 'lucide-react'
+import { Phone, MapPin, Mail } from 'lucide-react'
+import BrandLogo from '@/components/brand/BrandLogo'
 
 export default function Footer() {
   return (
@@ -9,13 +10,8 @@ export default function Footer() {
 
           {/* Brand */}
           <div className="md:col-span-1">
-            <div className="flex items-center gap-2.5 mb-4">
-              <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
-                <Car size={18} className="text-white" />
-              </div>
-              <span className="font-display font-bold text-white text-lg">
-                Auto<span className="text-primary-400">Elite</span>
-              </span>
+            <div className="mb-4">
+              <BrandLogo inverse size="lg" />
             </div>
             <p className="text-sm leading-relaxed text-neutral-500">
               Hệ thống showroom ô tô thông minh — mua xe dễ dàng, tư vấn tận tâm.

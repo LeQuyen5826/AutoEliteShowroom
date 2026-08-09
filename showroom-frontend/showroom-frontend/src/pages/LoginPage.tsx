@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
-import { Eye, EyeOff, Car, Loader2 } from 'lucide-react'
+import { Eye, EyeOff, Loader2 } from 'lucide-react'
 import { authService } from '@/services/auth.service'
 import { useAuthStore } from '@/store/auth.store'
+import BrandLogo from '@/components/brand/BrandLogo'
 
 export default function LoginPage() {
   const navigate = useNavigate()
@@ -37,14 +38,7 @@ export default function LoginPage() {
 
         {/* Logo */}
         <div className="text-center mb-8">
-          <Link to="/" className="inline-flex items-center gap-2.5 justify-center">
-            <div className="w-9 h-9 bg-primary-600 rounded-xl flex items-center justify-center">
-              <Car size={20} className="text-white" />
-            </div>
-            <span className="font-display font-bold text-xl text-neutral-900">
-              Auto<span className="text-primary-600">Elite</span>
-            </span>
-          </Link>
+          <BrandLogo size="lg" />
           <h1 className="mt-5 font-display font-bold text-2xl text-neutral-900">Đăng nhập</h1>
           <p className="text-sm text-neutral-500 mt-1">Chào mừng bạn quay lại!</p>
         </div>
