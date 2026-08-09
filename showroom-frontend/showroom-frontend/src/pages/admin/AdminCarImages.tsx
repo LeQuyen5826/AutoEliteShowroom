@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { carsService } from '@/services/cars.service'
-import { Loader2, Star, Trash2, ImagePlus, Car as CarIcon } from 'lucide-react'
+import { Loader2, Star, Trash2, ImagePlus, Car as CarIcon, Upload } from 'lucide-react'
 
 function getErrorMessage(err: unknown): string {
   const e = err as { response?: { data?: { message?: string } } }
@@ -14,6 +14,8 @@ export default function AdminCarImages() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [carId, setCarId] = useState(searchParams.get('carId') || '')
   const [imageUrl, setImageUrl] = useState('')
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [fileInputKey, setFileInputKey] = useState(0)
   const [isPrimary, setIsPrimary] = useState(false)
   const [error, setError] = useState('')
 
@@ -46,6 +48,39 @@ export default function AdminCarImages() {
     },
     onError: (err) => setError(getErrorMessage(err)),
   })
+
+  const uploadMutation = useMutation({
+    mutationFn: () => {
+      if (!selectedFile) throw new Error('Vui lòng chọn ảnh từ máy')
+      return carsService.uploadImage(carId, selectedFile, isPrimary)
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['car-detail-images', carId] })
+      qc.invalidateQueries({ queryKey: ['cars-admin'] })
+      setSelectedFile(null)
+      setFileInputKey(key => key + 1)
+      setIsPrimary(false)
+      setError('')
+    },
+    onError: (err) => setError(getErrorMessage(err)),
+  })
+
+  const chooseFile = (file?: File) => {
+    setError('')
+    if (!file) {
+      setSelectedFile(null)
+      return
+    }
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      setError('Chỉ hỗ trợ ảnh JPG, PNG hoặc WebP')
+      return
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setError('Ảnh gốc không được lớn hơn 10 MB')
+      return
+    }
+    setSelectedFile(file)
+  }
 
   const deleteMutation = useMutation({
     mutationFn: (imageId: string) => carsService.removeImage(carId, imageId),
@@ -106,20 +141,60 @@ export default function AdminCarImages() {
           <div className="card p-5 mb-6">
             <p className="text-sm font-medium text-neutral-700 mb-3 flex items-center gap-1.5"><ImagePlus size={16} /> Thêm ảnh mới</p>
             {error && <div className="px-4 py-3 mb-3 bg-red-50 border border-red-100 rounded-xl text-sm text-red-600">{error}</div>}
+
+            <div className="rounded-xl border border-dashed border-primary-200 bg-primary-50/40 p-4">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                <label className="btn-secondary cursor-pointer inline-flex items-center justify-center gap-2 shrink-0">
+                  <Upload size={16} /> Chọn ảnh từ máy
+                  <input
+                    key={fileInputKey}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="hidden"
+                    onChange={event => chooseFile(event.target.files?.[0])}
+                  />
+                </label>
+                <div className="min-w-0 flex-1 text-sm">
+                  {selectedFile ? (
+                    <>
+                      <p className="font-medium text-neutral-800 truncate">{selectedFile.name}</p>
+                      <p className="text-neutral-500">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                    </>
+                  ) : (
+                    <p className="text-neutral-500">JPG, PNG hoặc WebP, hệ thống sẽ tự động nén ảnh</p>
+                  )}
+                </div>
+                <button
+                  onClick={() => selectedFile && uploadMutation.mutate()}
+                  disabled={!selectedFile || uploadMutation.isPending}
+                  className="btn-primary shrink-0"
+                >
+                  {uploadMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : 'Tải ảnh lên'}
+                </button>
+              </div>
+            </div>
+
+            <label className="flex items-center gap-2 text-sm text-neutral-600 mt-3">
+              <input type="checkbox" checked={isPrimary} onChange={e => setIsPrimary(e.target.checked)} />
+              Đặt làm ảnh đại diện
+            </label>
+
+            <div className="flex items-center gap-3 my-4">
+              <div className="h-px bg-neutral-200 flex-1" />
+              <span className="text-xs text-neutral-400">hoặc thêm bằng URL</span>
+              <div className="h-px bg-neutral-200 flex-1" />
+            </div>
+
             <div className="flex flex-col sm:flex-row gap-3">
               <input className="input flex-1" placeholder="Dán URL ảnh (vd: https://...jpg)"
                 value={imageUrl} onChange={e => setImageUrl(e.target.value)} />
-              <label className="flex items-center gap-2 text-sm text-neutral-600 shrink-0">
-                <input type="checkbox" checked={isPrimary} onChange={e => setIsPrimary(e.target.checked)} />
-                Đặt làm ảnh đại diện
-              </label>
               <button onClick={() => imageUrl.trim() && addMutation.mutate()} disabled={!imageUrl.trim() || addMutation.isPending}
                 className="btn-primary shrink-0">
                 {addMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : 'Thêm ảnh'}
               </button>
             </div>
             <p className="text-xs text-neutral-400 mt-2">
-              Mẹo: tải ảnh xe lên một dịch vụ lưu trữ ảnh (vd: Imgur, Cloudinary, Google Drive chia sẻ công khai...) rồi dán link ảnh trực tiếp (.jpg/.png) vào đây.
+              Có thể chọn ảnh từ máy hoặc giữ cách thêm bằng URL. Ảnh từ máy sẽ được nén trước khi lưu.
             </p>
           </div>
 

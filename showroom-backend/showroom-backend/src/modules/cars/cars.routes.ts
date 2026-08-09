@@ -12,7 +12,7 @@ import { rateLimit } from '../../middleware/rate-limit.middleware';
 const router = Router();
 const imageUpload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 4 * 1024 * 1024, files: 1 },
+  limits: { fileSize: 1 * 1024 * 1024, files: 1 },
   fileFilter: (_req, file, callback) => {
     callback(null, ['image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype));
   },
@@ -113,9 +113,11 @@ router.post(
   '/:id/images',
   verifyToken,
   requireRole('staff', 'admin'),
+  imageUpload.single('image'),
   [
     param('id').isUUID().withMessage('Car ID không hợp lệ'),
-    body('url').isURL().withMessage('URL ảnh không hợp lệ'),
+    body('url').optional({ checkFalsy: true }).isURL().withMessage('URL ảnh không hợp lệ'),
+    body('is_primary').optional().isBoolean().withMessage('Giá trị ảnh đại diện không hợp lệ'),
   ],
   validateRequest,
   addCarImage

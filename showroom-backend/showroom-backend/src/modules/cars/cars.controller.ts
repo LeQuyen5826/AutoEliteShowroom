@@ -230,8 +230,21 @@ export const addCarImage = async (req: Request, res: Response): Promise<void> =>
       sendError(res, 'Không có quyền quản lý ảnh xe ngoài chi nhánh', 403); return;
     }
 
+    let imageUrl = typeof url === 'string' ? url.trim() : '';
+    if (req.file) {
+      // Bản đồ án: lưu ảnh đã nén dưới dạng data URL trong PostgreSQL/Neon.
+      // Không phụ thuộc ổ đĩa tạm của Render và không cần dịch vụ lưu trữ ngoài.
+      imageUrl = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
+    }
+    if (!imageUrl) {
+      sendError(res, 'Vui lòng chọn ảnh từ máy hoặc nhập URL ảnh', 400);
+      return;
+    }
+
+    const isPrimary = is_primary === true || is_primary === 'true';
+
     // Nếu đây là ảnh chính, bỏ is_primary của ảnh khác
-    if (is_primary) {
+    if (isPrimary) {
       await prisma.carImage.updateMany({
         where: { car_id: req.params.id },
         data: { is_primary: false },
@@ -239,7 +252,7 @@ export const addCarImage = async (req: Request, res: Response): Promise<void> =>
     }
 
     const image = await prisma.carImage.create({
-      data: { car_id: req.params.id, url, is_primary },
+      data: { car_id: req.params.id, url: imageUrl, is_primary: isPrimary },
     });
 
     sendSuccess(res, image, 'Thêm ảnh thành công', 201);
