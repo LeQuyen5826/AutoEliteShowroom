@@ -132,3 +132,71 @@ export const getCarsStatus = async (_req: Request, res: Response): Promise<void>
     sendError(res);
   }
 };
+
+/** Tổng quan công việc theo chi nhánh dành cho nhân viên. */
+export const getStaffOverview = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const requestedBranch = typeof req.query.branch_id === 'string' ? req.query.branch_id : undefined;
+    const branchId = req.user?.role === 'admin' ? requestedBranch : req.user?.branch_id;
+    if (!branchId) {
+      sendError(res, 'Tài khoản chưa được gán chi nhánh', 422);
+      return;
+    }
+
+    const branch = await prisma.branch.findUnique({
+      where: { id: branchId },
+      select: { id: true, name: true, address: true },
+    });
+    if (!branch) {
+      sendError(res, 'Không tìm thấy chi nhánh', 404);
+      return;
+    }
+
+    const [
+      totalCars, availableCars, pendingOrders, confirmedOrders,
+      pendingTestDrives, pendingMaintenances, customerCount, revenue,
+      recentOrders,
+    ] = await Promise.all([
+      prisma.car.count({ where: { branch_id: branchId } }),
+      prisma.car.count({ where: { branch_id: branchId, status: 'available' } }),
+      prisma.order.count({ where: { branch_id: branchId, status: 'pending' } }),
+      prisma.order.count({ where: { branch_id: branchId, status: 'confirmed' } }),
+      prisma.testDrive.count({ where: { branch_id: branchId, status: 'pending' } }),
+      prisma.maintenance.count({ where: { branch_id: branchId, status: { in: ['pending', 'confirmed', 'in_progress'] } } }),
+      prisma.user.count({
+        where: {
+          role: 'customer',
+          OR: [
+            { orders_as_customer: { some: { branch_id: branchId } } },
+            { test_drives: { some: { branch_id: branchId } } },
+            { maintenances: { some: { branch_id: branchId } } },
+          ],
+        },
+      }),
+      prisma.payment.aggregate({ where: { order: { branch_id: branchId } }, _sum: { amount: true } }),
+      prisma.order.findMany({
+        where: { branch_id: branchId },
+        take: 6,
+        orderBy: { created_at: 'desc' },
+        include: {
+          customer: { select: { full_name: true, phone: true } },
+          car: { select: { brand: true, model: true, year: true } },
+        },
+      }),
+    ]);
+
+    sendSuccess(res, {
+      branch,
+      cars: { total: totalCars, available: availableCars },
+      orders: { pending: pendingOrders, confirmed: confirmedOrders },
+      testDrives: { pending: pendingTestDrives },
+      maintenances: { active: pendingMaintenances },
+      customers: { total: customerCount },
+      revenue: { total: Number(revenue._sum.amount || 0) },
+      recentOrders,
+    });
+  } catch (err) {
+    console.error('[getStaffOverview]', err);
+    sendError(res);
+  }
+};

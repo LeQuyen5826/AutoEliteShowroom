@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcrypt';
+import { Prisma } from '@prisma/client';
 import prisma from '../../config/prisma';
 import { sendSuccess, sendError } from '../../utils/response';
 
@@ -87,6 +88,72 @@ export const listUsers = async (req: Request, res: Response): Promise<void> => {
     });
   } catch (err) {
     console.error('[listUsers]', err);
+    sendError(res);
+  }
+};
+
+/**
+ * GET /api/users/customers
+ * Staff chỉ thấy khách hàng có hoạt động tại chi nhánh của mình; admin thấy toàn bộ.
+ */
+export const listCustomers = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const page = Math.max(1, Number.parseInt(String(req.query.page || '1'), 10) || 1);
+    const limit = Math.min(100, Math.max(1, Number.parseInt(String(req.query.limit || '20'), 10) || 20));
+    const search = String(req.query.search || '').trim();
+
+    const filters: Prisma.UserWhereInput[] = [];
+    if (req.user?.role === 'staff') {
+      const branchId = req.user.branch_id;
+      if (!branchId) {
+        sendError(res, 'Tài khoản nhân viên chưa được gán chi nhánh', 422);
+        return;
+      }
+      filters.push({
+        OR: [
+          { orders_as_customer: { some: { branch_id: branchId } } },
+          { test_drives: { some: { branch_id: branchId } } },
+          { maintenances: { some: { branch_id: branchId } } },
+        ],
+      });
+    }
+    if (search) {
+      filters.push({
+        OR: [
+          { full_name: { contains: search, mode: 'insensitive' } },
+          { email: { contains: search, mode: 'insensitive' } },
+          { phone: { contains: search, mode: 'insensitive' } },
+        ],
+      });
+    }
+
+    const where: Prisma.UserWhereInput = {
+      role: 'customer',
+      ...(filters.length ? { AND: filters } : {}),
+    };
+
+    const [customers, total] = await Promise.all([
+      prisma.user.findMany({
+        where,
+        skip: (page - 1) * limit,
+        take: limit,
+        orderBy: { created_at: 'desc' },
+        select: {
+          ...USER_SELECT,
+          _count: {
+            select: { orders_as_customer: true, test_drives: true, maintenances: true },
+          },
+        },
+      }),
+      prisma.user.count({ where }),
+    ]);
+
+    sendSuccess(res, {
+      customers,
+      pagination: { total, page, limit, totalPages: Math.ceil(total / limit) },
+    });
+  } catch (err) {
+    console.error('[listCustomers]', err);
     sendError(res);
   }
 };

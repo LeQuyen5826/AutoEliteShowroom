@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { body, param } from 'express-validator';
-import { createReview, listReviews, toggleReviewVisibility } from './reviews.controller';
+import { createReview, listReviews, listAllReviews, toggleReviewVisibility } from './reviews.controller';
 import { verifyToken, requireRole } from '../../middleware/auth.middleware';
 import { validateRequest } from '../../middleware/validate.middleware';
 
@@ -23,10 +23,17 @@ carReviewsRouter.post(
 // Router cho /api/reviews
 export const reviewsRouter = Router();
 
+reviewsRouter.get(
+  '/',
+  verifyToken,
+  requireRole('staff', 'admin'),
+  listAllReviews
+);
+
 reviewsRouter.patch(
   '/:id/visibility',
   verifyToken,
-  requireRole('admin'),
+  requireRole('staff', 'admin'),
   [param('id').isUUID()],
   validateRequest,
   toggleReviewVisibility

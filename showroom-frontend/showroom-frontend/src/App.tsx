@@ -30,6 +30,10 @@ import AdminUsers from '@/pages/admin/AdminUsers'
 import AdminTestDrives from '@/pages/admin/AdminTestDrives'
 import AdminMaintenance from '@/pages/admin/AdminMaintenance'
 import AdminCarImages from '@/pages/admin/AdminCarImages'
+import StaffDashboard from '@/pages/admin/StaffDashboard'
+import StaffCustomers from '@/pages/admin/StaffCustomers'
+import AdminReviews from '@/pages/admin/AdminReviews'
+import AdminContacts from '@/pages/admin/AdminContacts'
 
 import { useAuthStore } from '@/store/auth.store'
 import { useInitAuth } from '@/hooks/useInitAuth'
@@ -73,7 +77,7 @@ function AdminOnlyRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, user, authInitialized } = useAuthStore()
   if (!authInitialized) return <AuthLoading />
   if (!isAuthenticated) return <Navigate to="/login" replace />
-  if (user?.role !== 'admin') return <Navigate to="/admin/inventory" replace />
+  if (user?.role !== 'admin') return <Navigate to="/admin/staff-dashboard" replace />
   return <>{children}</>
 }
 
@@ -150,11 +154,15 @@ export default function App() {
             <Route index element={<AdminOnlyRoute><AdminDashboard /></AdminOnlyRoute>} />
 
             {/* Staff + Admin */}
+            <Route path="staff-dashboard" element={<StaffDashboard />} />
             <Route path="inventory"   element={<AdminInventory />} />
             <Route path="orders"      element={<AdminOrders />} />
             <Route path="test-drives" element={<AdminTestDrives />} />
             <Route path="maintenance" element={<AdminMaintenance />} />
             <Route path="car-images"  element={<AdminCarImages />} />
+            <Route path="customers"   element={<StaffCustomers />} />
+            <Route path="reviews"     element={<AdminReviews />} />
+            <Route path="contacts"    element={<AdminContacts />} />
 
             {/* Chỉ Admin */}
             <Route path="users" element={<AdminOnlyRoute><AdminUsers /></AdminOnlyRoute>} />

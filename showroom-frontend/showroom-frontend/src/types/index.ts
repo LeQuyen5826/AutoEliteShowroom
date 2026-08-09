@@ -81,7 +81,30 @@ export interface Review {
   rating: number
   comment?: string
   created_at: string
-  customer?: Pick<User, 'id' | 'full_name'>
+  is_visible?: boolean
+  customer?: Pick<User, 'id' | 'full_name' | 'email'>
+  car?: Pick<Car, 'id' | 'brand' | 'model' | 'year'>
+}
+
+export type ContactStatus = 'new' | 'contacted' | 'closed'
+
+export interface ContactLead {
+  id: string
+  name: string
+  email: string
+  phone?: string
+  subject?: string
+  message: string
+  status: ContactStatus
+  created_at: string
+}
+
+export interface CustomerWithCounts extends User {
+  _count?: {
+    orders_as_customer: number
+    test_drives: number
+    maintenances: number
+  }
 }
 
 export type TestDriveStatus = 'pending' | 'confirmed' | 'done' | 'cancelled'

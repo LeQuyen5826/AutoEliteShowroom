@@ -2,6 +2,7 @@ import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Package, ShoppingCart,
   Users, CalendarCheck, ArrowLeft, LogOut, Wrench, Image as ImageIcon,
+  ContactRound, Star, MessagesSquare,
 } from 'lucide-react'
 import { cn } from '@/utils'
 import { useAuthStore } from '@/store/auth.store'
@@ -18,6 +19,13 @@ const ALL_NAV = [
     icon: <LayoutDashboard size={18} />,
     exact: true,
     roles: ['admin'],          // chỉ admin
+  },
+  {
+    to: '/admin/staff-dashboard',
+    label: 'Dashboard nhân viên',
+    icon: <LayoutDashboard size={18} />,
+    exact: true,
+    roles: ['staff'],
   },
   {
     to: '/admin/inventory',
@@ -51,6 +59,27 @@ const ALL_NAV = [
     to: '/admin/car-images',
     label: 'Ảnh xe',
     icon: <ImageIcon size={18} />,
+    exact: false,
+    roles: ['admin', 'staff'],
+  },
+  {
+    to: '/admin/customers',
+    label: 'Quản lý khách hàng',
+    icon: <ContactRound size={18} />,
+    exact: false,
+    roles: ['admin', 'staff'],
+  },
+  {
+    to: '/admin/reviews',
+    label: 'Quản lý đánh giá',
+    icon: <Star size={18} />,
+    exact: false,
+    roles: ['admin', 'staff'],
+  },
+  {
+    to: '/admin/contacts',
+    label: 'Quản lý liên hệ',
+    icon: <MessagesSquare size={18} />,
     exact: false,
     roles: ['admin', 'staff'],
   },
@@ -125,11 +154,11 @@ export default function AdminLayout() {
       </aside>
 
       {/* ── Bottom nav mobile ── */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-neutral-100 flex z-40">
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-neutral-100 flex overflow-x-auto z-40">
         {nav.map(item => (
           <Link key={item.to} to={item.to}
             className={cn(
-              'flex-1 flex flex-col items-center gap-1 py-2.5 text-xs',
+              'min-w-20 flex-1 flex flex-col items-center gap-1 py-2.5 text-xs',
               isActive(item.to, item.exact) ? 'text-primary-600' : 'text-neutral-500'
             )}>
             {item.icon}

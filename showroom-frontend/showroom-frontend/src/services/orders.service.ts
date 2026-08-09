@@ -98,6 +98,11 @@ export const testDrivesService = {
 }
 
 export const dashboardService = {
+  getStaffOverview: async () => {
+    const { data } = await api.get('/dashboard/staff-overview')
+    return data.data
+  },
+
   getOverview: async () => {
     const { data } = await api.get('/dashboard/overview')
     return data.data

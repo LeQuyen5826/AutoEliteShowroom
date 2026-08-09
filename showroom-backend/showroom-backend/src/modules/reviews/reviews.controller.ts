@@ -84,6 +84,46 @@ export const listReviews = async (req: Request, res: Response): Promise<void> =>
 };
 
 /**
+ * GET /api/reviews
+ * Staff/Admin xem toàn bộ đánh giá để kiểm duyệt.
+ */
+export const listAllReviews = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const page = Math.max(1, Number.parseInt(String(req.query.page || '1'), 10) || 1);
+    const limit = Math.min(50, Math.max(1, Number.parseInt(String(req.query.limit || '20'), 10) || 20));
+    const visibility = String(req.query.visibility || '');
+    const rating = Number.parseInt(String(req.query.rating || ''), 10);
+
+    const where: Prisma.ReviewWhereInput = {};
+    if (visibility === 'visible') where.is_visible = true;
+    if (visibility === 'hidden') where.is_visible = false;
+    if (Number.isInteger(rating) && rating >= 1 && rating <= 5) where.rating = rating;
+
+    const [reviews, total] = await Promise.all([
+      prisma.review.findMany({
+        where,
+        skip: (page - 1) * limit,
+        take: limit,
+        orderBy: { created_at: 'desc' },
+        include: {
+          customer: { select: { id: true, full_name: true, email: true } },
+          car: { select: { id: true, brand: true, model: true, year: true } },
+        },
+      }),
+      prisma.review.count({ where }),
+    ]);
+
+    sendSuccess(res, {
+      reviews,
+      pagination: { total, page, limit, totalPages: Math.ceil(total / limit) },
+    });
+  } catch (err) {
+    console.error('[listAllReviews]', err);
+    sendError(res);
+  }
+};
+
+/**
  * PATCH /api/reviews/:id/visibility
  * Admin ẩn/hiện đánh giá
  */

@@ -42,3 +42,22 @@ export const listContactLeads = async (req: Request, res: Response): Promise<voi
     sendError(res);
   }
 };
+
+export const updateContactLeadStatus = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const existing = await prisma.contactLead.findUnique({ where: { id: req.params.id } });
+    if (!existing) {
+      sendError(res, 'Không tìm thấy yêu cầu liên hệ', 404);
+      return;
+    }
+
+    const lead = await prisma.contactLead.update({
+      where: { id: req.params.id },
+      data: { status: req.body.status },
+    });
+    sendSuccess(res, lead, 'Cập nhật trạng thái liên hệ thành công');
+  } catch (err) {
+    console.error('[updateContactLeadStatus]', err);
+    sendError(res);
+  }
+};

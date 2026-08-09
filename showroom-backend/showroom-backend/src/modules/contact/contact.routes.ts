@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { body } from 'express-validator';
-import { createContactLead, listContactLeads } from './contact.controller';
+import { body, param } from 'express-validator';
+import { createContactLead, listContactLeads, updateContactLeadStatus } from './contact.controller';
 import { verifyToken, requireRole } from '../../middleware/auth.middleware';
 import { rateLimit } from '../../middleware/rate-limit.middleware';
 import { validateRequest } from '../../middleware/validate.middleware';
@@ -21,6 +21,18 @@ router.post(
   createContactLead
 );
 
-router.get('/', verifyToken, requireRole('admin'), listContactLeads);
+router.get('/', verifyToken, requireRole('staff', 'admin'), listContactLeads);
+
+router.patch(
+  '/:id/status',
+  verifyToken,
+  requireRole('staff', 'admin'),
+  [
+    param('id').isUUID(),
+    body('status').isIn(['new', 'contacted', 'closed']).withMessage('Trạng thái liên hệ không hợp lệ'),
+  ],
+  validateRequest,
+  updateContactLeadStatus
+);
 
 export default router;

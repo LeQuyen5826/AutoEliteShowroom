@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   ChevronLeft, Fuel, Settings, MapPin, Calendar, Gauge,
   Star, Phone, CalendarCheck, ShoppingCart, Loader2, ChevronRight
 } from 'lucide-react'
 import { carsService } from '@/services/cars.service'
+import { reviewsService } from '@/services/reviews.service'
 import { useAuthStore } from '@/store/auth.store'
 import { formatPrice, formatNumber, carStatusLabel, carConditionLabel } from '@/utils'
 
@@ -14,13 +15,34 @@ const PLACEHOLDER = 'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w
 export default function CarDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { isAuthenticated } = useAuthStore()
+  const queryClient = useQueryClient()
+  const { isAuthenticated, user } = useAuthStore()
   const [activeImage, setActiveImage] = useState(0)
+  const [rating, setRating] = useState(5)
+  const [comment, setComment] = useState('')
+  const [reviewMessage, setReviewMessage] = useState('')
+  const [reviewError, setReviewError] = useState('')
 
   const { data: car, isLoading, isError } = useQuery({
     queryKey: ['car', id],
     queryFn: () => carsService.getById(id!),
     enabled: !!id,
+  })
+
+  const reviewMutation = useMutation({
+    mutationFn: () => reviewsService.create(id!, { rating, comment: comment.trim() || undefined }),
+    onSuccess: () => {
+      setComment('')
+      setRating(5)
+      setReviewError('')
+      setReviewMessage('Cảm ơn bạn! Đánh giá đã được gửi thành công.')
+      queryClient.invalidateQueries({ queryKey: ['car', id] })
+    },
+    onError: (error: unknown) => {
+      const apiError = error as { response?: { data?: { message?: string } } }
+      setReviewMessage('')
+      setReviewError(apiError.response?.data?.message || 'Không thể gửi đánh giá. Vui lòng thử lại.')
+    },
   })
 
   if (isLoading) return (
@@ -166,11 +188,35 @@ export default function CarDetailPage() {
           )}
 
           {/* Reviews */}
-          {car.reviews && car.reviews.length > 0 && (
-            <div className="card p-6">
-              <h2 className="font-display font-semibold text-neutral-900 mb-4">
-                Đánh giá ({car.reviews.length})
-              </h2>
+          <div className="card p-6">
+            <h2 className="font-display font-semibold text-neutral-900 mb-4">
+              Đánh giá khách hàng ({car.reviews?.length ?? 0})
+            </h2>
+
+            {user?.role === 'customer' ? (
+              <form onSubmit={event => { event.preventDefault(); setReviewError(''); setReviewMessage(''); reviewMutation.mutate() }} className="bg-neutral-50 rounded-2xl p-4 mb-6">
+                <p className="text-sm font-medium text-neutral-800 mb-1">Chia sẻ trải nghiệm của bạn</p>
+                <p className="text-xs text-neutral-500 mb-3">Chỉ khách hàng đã hoàn tất mua chiếc xe này mới có thể gửi đánh giá.</p>
+                <div className="flex items-center gap-1 mb-3" aria-label="Chọn số sao">
+                  {[1, 2, 3, 4, 5].map(value => (
+                    <button key={value} type="button" onClick={() => setRating(value)} className="p-1" aria-label={`${value} sao`}>
+                      <Star size={24} className={value <= rating ? 'text-amber-400 fill-amber-400' : 'text-neutral-300'} />
+                    </button>
+                  ))}
+                </div>
+                <textarea className="input w-full min-h-24 resize-y" maxLength={1000} value={comment} onChange={event => setComment(event.target.value)} placeholder="Nhận xét về xe và trải nghiệm mua hàng..." />
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-3">
+                  <div>{reviewMessage && <p className="text-sm text-emerald-600">{reviewMessage}</p>}{reviewError && <p className="text-sm text-red-600">{reviewError}</p>}</div>
+                  <button type="submit" disabled={reviewMutation.isPending} className="btn-primary shrink-0 disabled:opacity-60">
+                    {reviewMutation.isPending && <Loader2 size={15} className="animate-spin" />} Gửi đánh giá
+                  </button>
+                </div>
+              </form>
+            ) : !isAuthenticated ? (
+              <p className="text-sm text-neutral-500 bg-neutral-50 rounded-xl p-4 mb-5">Vui lòng <Link to="/login" className="text-primary-600 font-medium">đăng nhập</Link> để gửi đánh giá.</p>
+            ) : null}
+
+            {car.reviews && car.reviews.length > 0 ? (
               <div className="space-y-4">
                 {car.reviews.map((review) => (
                   <div key={review.id} className="border-b border-neutral-100 pb-4 last:border-0 last:pb-0">
@@ -194,8 +240,8 @@ export default function CarDetailPage() {
                   </div>
                 ))}
               </div>
-            </div>
-          )}
+            ) : <p className="text-sm text-neutral-400 py-4 text-center">Chưa có đánh giá nào cho xe này.</p>}
+          </div>
         </div>
 
         {/* Right: Sticky CTA */}

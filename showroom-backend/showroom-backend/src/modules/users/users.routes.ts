@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { body } from 'express-validator';
-import { getMe, updateMe, listUsers, createStaff } from './users.controller';
+import { body, query } from 'express-validator';
+import { getMe, updateMe, listUsers, listCustomers, createStaff } from './users.controller';
 import { verifyToken, requireRole } from '../../middleware/auth.middleware';
 import { validateRequest } from '../../middleware/validate.middleware';
 
@@ -26,6 +26,18 @@ router.put(
 
 // GET /api/users  (admin only)
 router.get('/', requireRole('admin'), listUsers);
+
+router.get(
+  '/customers',
+  requireRole('staff', 'admin'),
+  [
+    query('page').optional().isInt({ min: 1 }),
+    query('limit').optional().isInt({ min: 1, max: 100 }),
+    query('search').optional().trim().isLength({ max: 100 }),
+  ],
+  validateRequest,
+  listCustomers
+);
 
 // POST /api/users/staff  (admin only)
 router.post(
