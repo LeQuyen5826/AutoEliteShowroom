@@ -85,6 +85,17 @@ export default function AdminOrders() {
 
   const orders: OrderRow[] = data?.orders ?? []
   const pagination = data?.pagination
+  const remainingAmount = Math.max(
+    0,
+    Number(payments?.remaining ?? detail?.total_amount ?? 0),
+  )
+  const enteredAmount = Number(paymentForm.amount)
+  const canAddPayment =
+    remainingAmount > 0 &&
+    Number.isFinite(enteredAmount) &&
+    enteredAmount > 0 &&
+    enteredAmount <= remainingAmount &&
+    !paymentMutation.isPending
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -257,19 +268,39 @@ export default function AdminOrders() {
                 )}
 
                 {/* Thêm thanh toán */}
-                <div className="flex gap-2">
-                  <input type="number" min="1" max={Number(payments?.remaining || detail.total_amount)} placeholder="Số tiền" className="input text-sm flex-1"
-                    value={paymentForm.amount} onChange={e => setPaymentForm(f => ({ ...f, amount: e.target.value }))} />
-                  <select className="select text-sm w-32" value={paymentForm.method}
-                    onChange={e => setPaymentForm(f => ({ ...f, method: e.target.value }))}>
-                    <option value="cash">Tiền mặt</option>
-                    <option value="bank_transfer">Chuyển khoản</option>
-                  </select>
-                  <button onClick={() => paymentMutation.mutate()} disabled={!paymentForm.amount || paymentMutation.isPending}
-                    className="btn-primary text-sm px-4">
-                    {paymentMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : 'Thêm'}
-                  </button>
-                </div>
+                {remainingAmount <= 0 ? (
+                  <div className="rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                    Đơn hàng đã được thanh toán đầy đủ.
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      min="1"
+                      max={remainingAmount}
+                      placeholder="Số tiền"
+                      className="input text-sm flex-1"
+                      value={paymentForm.amount}
+                      onChange={e => setPaymentForm(f => ({ ...f, amount: e.target.value }))}
+                    />
+                    <select
+                      className="select text-sm w-32"
+                      value={paymentForm.method}
+                      onChange={e => setPaymentForm(f => ({ ...f, method: e.target.value }))}
+                    >
+                      <option value="cash">Tiền mặt</option>
+                      <option value="bank_transfer">Chuyển khoản</option>
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => paymentMutation.mutate()}
+                      disabled={!canAddPayment}
+                      className="btn-primary text-sm px-4 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      {paymentMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : 'Thêm'}
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>
