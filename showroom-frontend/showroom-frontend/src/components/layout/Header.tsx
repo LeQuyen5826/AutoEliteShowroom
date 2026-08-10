@@ -107,10 +107,12 @@ export default function Header() {
                       <p className="text-xs text-neutral-500">Đăng nhập với</p>
                       <p className="text-sm font-medium text-neutral-800 truncate">{user.email}</p>
                     </div>
-                    <Link to="/orders" className="flex items-center gap-2 px-3 py-2 text-sm text-neutral-700 hover:bg-neutral-50"
-                      onClick={() => setUserDropdown(false)}>
-                      <Car size={14} /> Đơn hàng của tôi
-                    </Link>
+                    {user.role === 'customer' && (
+                      <Link to="/orders" className="flex items-center gap-2 px-3 py-2 text-sm text-neutral-700 hover:bg-neutral-50"
+                        onClick={() => setUserDropdown(false)}>
+                        <Car size={14} /> Đơn hàng của tôi
+                      </Link>
+                    )}
                     {(user.role === 'admin' || user.role === 'staff') && (
                       <Link to="/admin" className="flex items-center gap-2 px-3 py-2 text-sm text-neutral-700 hover:bg-neutral-50"
                         onClick={() => setUserDropdown(false)}>
